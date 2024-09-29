@@ -1,128 +1,59 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plant Health Monitor</title>
-    <style>
-        body {
-            background-color: #e0f7e9; /* Soft green background */
-            font-family: 'Arial', sans-serif;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            color: #2d572c; /* Dark green text color */
+<div>Teachable Machine Image Model</div>
+<button type="button" onclick="init()">Start</button>
+<div id="webcam-container"></div>
+<div id="label-container"></div>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+<script type="text/javascript">
+    // More API functions here:
+    // https://github.com/googlecreativelab/teachablemachine-community/tree/master/libraries/image
+
+    // the link to your model provided by Teachable Machine export panel
+    const URL = "https://teachablemachine.withgoogle.com/models/6fGL2XjAU/";
+
+    let model, webcam, labelContainer, maxPredictions;
+
+    // Load the image model and setup the webcam
+    async function init() {
+        const modelURL = URL + "model.json";
+        const metadataURL = URL + "metadata.json";
+
+        // load the model and metadata
+        // Refer to tmImage.loadFromFiles() in the API to support files from a file picker
+        // or files from your local hard drive
+        // Note: the pose library adds "tmImage" object to your window (window.tmImage)
+        model = await tmImage.load(modelURL, metadataURL);
+        maxPredictions = model.getTotalClasses();
+
+        // Convenience function to setup a webcam
+        const flip = true; // whether to flip the webcam
+        webcam = new tmImage.Webcam(200, 200, flip); // width, height, flip
+        await webcam.setup(); // request access to the webcam
+        await webcam.play();
+        window.requestAnimationFrame(loop);
+
+        // append elements to the DOM
+        document.getElementById("webcam-container").appendChild(webcam.canvas);
+        labelContainer = document.getElementById("label-container");
+        for (let i = 0; i < maxPredictions; i++) { // and class labels
+            labelContainer.appendChild(document.createElement("div"));
         }
+    }
 
-        h1 {
-            font-size: 2.5rem;
-            margin-bottom: 20px;
-            color: #4caf50; /* Green heading */
+    async function loop() {
+        webcam.update(); // update the webcam frame
+        await predict();
+        window.requestAnimationFrame(loop);
+    }
+
+    // run the webcam image through the image model
+    async function predict() {
+        // predict can take in an image, video or canvas html element
+        const prediction = await model.predict(webcam.canvas);
+        for (let i = 0; i < maxPredictions; i++) {
+            const classPrediction =
+                prediction[i].className + ": " + (prediction[i].probability*100).toFixed(2);
+            labelContainer.childNodes[i].innerHTML = classPrediction;
         }
-
-        button {
-            background-color: #4caf50;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 1.2rem;
-            margin-bottom: 20px;
-            transition: background-color 0.3s ease;
-        }
-
-        button:hover {
-            background-color: #388e3c;
-        }
-
-        #webcam-container {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 20px;
-        }
-
-        #label-container div {
-            background-color: #f0fff4;
-            padding: 10px;
-            border-radius: 5px;
-            margin: 5px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            font-size: 1rem;
-            color: #2d572c;
-            text-align: center;
-        }
-
-        #label-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        footer {
-            margin-top: 20px;
-            font-size: 0.8rem;
-            color: #388e3c;
-        }
-    </style>
-</head>
-<body>
-
-    <h1>Plant Health Monitor</h1>
-    <button type="button" onclick="init()">Start Monitoring</button>
-    <div id="webcam-container"></div>
-    <div id="label-container"></div>
-
-    <footer>
-        Powered by Teachable Machine - Nature Inspired Interface
-    </footer>
-
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
-    <script type="text/javascript">
-        const URL = "https://teachablemachine.withgoogle.com/models/6fGL2XjAU/";
-
-        let model, webcam, labelContainer, maxPredictions;
-
-        async function init() {
-            const modelURL = URL + "model.json";
-            const metadataURL = URL + "metadata.json";
-
-            model = await tmImage.load(modelURL, metadataURL);
-            maxPredictions = model.getTotalClasses();
-
-            const flip = true; 
-            webcam = new tmImage.Webcam(200, 200, flip); 
-            await webcam.setup(); 
-            await webcam.play();
-            window.requestAnimationFrame(loop);
-
-            document.getElementById("webcam-container").appendChild(webcam.canvas);
-            labelContainer = document.getElementById("label-container");
-            for (let i = 0; i < maxPredictions; i++) { 
-                labelContainer.appendChild(document.createElement("div"));
-            }
-        }
-
-        async function loop() {
-            webcam.update(); 
-            await predict();
-            window.requestAnimationFrame(loop);
-        }
-
-        async function predict() {
-            const prediction = await model.predict(webcam.canvas);
-            for (let i = 0; i < maxPredictions; i++) {
-                const classPrediction =
-                    prediction[i].className + ": " + (prediction[i].probability*100).toFixed(2) + "%";
-                labelContainer.childNodes[i].innerHTML = classPrediction;
-            }
-        }
-    </script>
-
-</body>
-</html>
+    }
+</script>
